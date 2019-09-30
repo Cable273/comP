@@ -28,6 +28,7 @@ class op_string_seq:
             self.string_seq = dict()
             self.length = 0
 
+    #new turm to sum of op strings 
     def update(self,coef,uc_string,period,loc):
         self.string_seq[self.length] = op_string(coef,uc_string,period,loc)
         self.length += 1
@@ -38,7 +39,6 @@ class op_string_seq:
         for n in range(0,len(self.string_seq)):
             new_string_seq[n].coef = new_string_seq[n].coef*a
         return op_string_seq(new_string_seq)
-
     def __rmul__(self,a):
         new_string_seq = copy.deepcopy(self.string_seq)
         for n in range(0,len(self.string_seq)):
@@ -61,6 +61,7 @@ class op_string_seq:
                     c += 1
         return op_string_seq(string_seq)
 
+#commute two op strings
 def comP(A,B):
     #array with unit cell of A/B indices (eg 2n+1,2n+2,2n+3->1,2,3)
     A_loc = np.arange(A.loc,A.loc+A.length)
@@ -94,6 +95,7 @@ def comP(A,B):
         rhs_loc[n] = np.arange(B.period*n_vals[n]+B.loc,B.period*n_vals[n]+B.loc+B.length)
             
     #for each rhs loc form "sandwich" of overlapping sites,store each term in nested dictionary
+    #eg strings like "P(+P)(-P)P = P+-P"
     rhs_commutes = dict()
     new_coef = np.zeros(np.size(n_vals))
     for n in range(0,np.size(rhs_loc,axis=0)):
@@ -131,7 +133,6 @@ def comP(A,B):
         for m in range(0,np.size(paired_keys,axis=0)):
             if rhs_commutes[n][paired_keys[m]] == "PP":
                 rhs_commutes[n][paired_keys[m]] = "P"
-
         #identify remaining pairs
         paired_keys = []
         for m in range(0,np.size(keys,axis=0)):
@@ -149,7 +150,6 @@ def comP(A,B):
             simplified_products_AB = dict()
             for m in range(0,np.size(paired_keys,axis=0)):
                 simplified_products_AB[m] = relations.product(rhs_commutes[n][paired_keys[m]])
-
             for m in range(0,len(simplified_products_AB)):
                 AB_coef = AB_coef * simplified_products_AB[m].coef
 
@@ -158,7 +158,6 @@ def comP(A,B):
             simplified_products_BA = dict()
             for m in range(0,np.size(paired_keys,axis=0)):
                 simplified_products_BA[m] = relations.product(rhs_commutes[n][paired_keys[m]][::-1])
-
             for m in range(0,len(simplified_products_BA)):
                 BA_coef = BA_coef * simplified_products_BA[m].coef
 
@@ -184,6 +183,7 @@ def comP(A,B):
             else:
                 new_coef[n] = 0
 
+    #append simplified site ops to form strings, only considering those with coef>0
     rhs_strings = dict()
     new_loc = []
     new_coef_trimmed = []
@@ -205,18 +205,19 @@ def comP(A,B):
             new_coef_trimmed = np.append(new_coef_trimmed,new_coef[n])
             c += 1
     #simplify final terms - cancel any same terms/replace commutators (eg P(+-)P - P(-+)P = 2*PZP)
-    keys = list(rhs_strings.keys())
-
-    #dictionary storing hash term using hash of string as key (TO DO: refactor this into prev loops for speedup)
+    #dictionary storing string + coef using hash of string as key (so coef sum can be updated, unique key)
     new_terms = dict()
     new_term_coef = dict()
+    keys = list(rhs_strings.keys())
+    #init
     for n in range(0,np.size(keys,axis=0)):
         new_term_coef[hash(rhs_strings[keys[n]])]  = 0
         new_terms[hash(rhs_strings[keys[n]])] = rhs_strings[keys[n]]
-
+    #update coef
     for n in range(0,np.size(keys,axis=0)):
         new_term_coef[hash(rhs_strings[keys[n]])]  += new_coef_trimmed[n]
 
+    #form new op_string_seq
     keys = list(new_terms.keys())
     non_zero_strings = dict()
     non_zero_coef = dict()
