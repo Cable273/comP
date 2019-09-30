@@ -7,7 +7,6 @@ import numpy as np
 import scipy as sp
 import matplotlib.pyplot as plt
 import pandas as pd
-from Search_functions import find_index_bisection
 from relations import relations
 
 class op_string:
