@@ -34,9 +34,9 @@ class relations:
             return simplified_string("Q",1)
 
         elif string == "PZ":
-            return simplified_string("P",1/2)
+            return simplified_string("P",-1/2)
         elif string == "ZP":
-            return simplified_string("P",1/2)
+            return simplified_string("P",-1/2)
 
         elif string == "Z+":
             return simplified_string("+",1/2)
@@ -70,6 +70,6 @@ class relations:
             return simplified_string("-",1)
         elif string == "PP":
             return simplified_string("I",0)
-        else:
-            return simplified_string(string,1)
+        # else:
+            # return simplified_string(string,1)
 
