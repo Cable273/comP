@@ -20,6 +20,15 @@ class op_string:
         self.variables = variables
         self.variable_orders = variable_orders
 
+        #form unique hash to identify op_string type (to sum terms in an op_string_seq)
+        string_to_hash = uc_string
+        string_to_hash += str(period)
+        string_to_hash += str(loc)
+        string_to_hash += str(variables)
+        string_to_hash += str(variable_orders)
+        key = hash(string_to_hash)
+        self.key = key
+
     #multiply variables (abc etc) and keep track of the order (power) of each variable
     def multiply_variables(self,B):
         if np.size(self.variables)>0 and np.size(B.variables)>0:
@@ -52,8 +61,21 @@ class op_string:
                 if n not in shared_B_indices:
                     variables = np.append(variables,B.variables[n])
                     orders = np.append(orders,B.variable_orders[n])
-            orders = orders.astype(int)
-            return variables,orders
+
+            #need a unique way of sorting variables so same terms have same ordering
+            #hash each variable and then order the hashes
+            var_hash = np.zeros(np.size(variables))
+            for n in range(0,np.size(variables,axis=0)):
+                var_hash[n] = hash(variables[n])
+            indices = np.arange(0,np.size(var_hash))
+            var_hash_sorted,indices_sorted = (list(t) for t in zip(*sorted(zip(var_hash,indices))))
+            final_variables = []
+            final_orders = []
+            for n in range(0,np.size(indices_sorted,axis=0)):
+                final_variables = np.append(final_variables,variables[indices_sorted[n]])
+                final_orders = np.append(final_orders,orders[indices_sorted[n]])
+            final_orders= final_orders.astype(int)
+            return final_variables,final_orders
         #just return A (multiply by 1)
         elif np.size(self.variables)>0: 
             return self.variables,self.variable_orders
@@ -103,7 +125,42 @@ class op_string_seq:
                     var_string += " "
                 print(self.string_seq[n].coef,self.string_seq[n].string,self.string_seq[n].period,self.string_seq[n].loc,var_string)
 
-    #[sum_n A_n , sum_m B_m] = sum_{n,m} [A_n,B_m]
+    # sum any repeated terms and form new op string seq with reduced term count
+    def simplify(self):
+        # find terms which share a hash (same term)
+        shared_term_loc = dict()
+        for n in range(0,len(self.string_seq)):
+            for m in range(n,len(self.string_seq)):
+                if self.string_seq[n].key == self.string_seq[m].key:
+                    key = self.string_seq[n].key
+                    #init dict entry
+                    if key not in list(shared_term_loc.keys()):
+                        shared_term_loc[key] = np.array([n,m])
+                    #append dict entry
+                    else:
+                        shared_term_loc[key] = np.append(shared_term_loc[key],np.array([n,m]))
+        keys = list(shared_term_loc.keys())
+        for n in range(0,np.size(keys,axis=0)):
+            shared_term_loc[keys[n]] = np.unique(np.sort(shared_term_loc[keys[n]]))
+
+        #sum shared terms
+        string_seq = dict()
+        c=0
+        for n in range(0,np.size(keys,axis=0)):
+            shared_indices = shared_term_loc[keys[n]]
+            coef = 0
+            for m in range(0,np.size(shared_indices,axis=0)):
+                coef = coef + self.string_seq[shared_indices[m]].coef
+            string_seq[c] = copy.deepcopy(self.string_seq[shared_indices[0]])
+            string_seq[c].coef = coef
+            c+=1
+        # terms not shared
+        for n in range(0,len(self.string_seq)):
+            if self.string_seq[n].key not in keys:
+                string_seq[c] = self.string_seq[n]
+                c+=1
+        return op_string_seq(string_seq)
+
     def comPlin(self,B):
         string_seq = dict()
         c = 0
@@ -114,6 +171,7 @@ class op_string_seq:
                     string_seq[c] = term_strings.string_seq[u]
                     c += 1
         return op_string_seq(string_seq)
+     
 
 #commute two op strings
 def comP(A,B):

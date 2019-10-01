@@ -31,12 +31,14 @@ Hm.print()
 print("\n")
 
 Hz = 1/2 * Hp.comPlin(Hm)
+Hz = Hz.simplify()
 print("Hz")
 Hz.print()
 print("\n")
 
 print("[Hz,H+]")
 error = Hz.comPlin(Hp)
+error = error.simplify()
 error.print()
 
 
