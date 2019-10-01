@@ -11,12 +11,57 @@ from Search_functions import find_index_bisection
 from relations import relations
 
 class op_string:
-    def __init__(self,coef,uc_string,period,loc):
+    def __init__(self,coef,uc_string,period,loc,variables=[],variable_orders=[]):
         self.coef = coef
         self.string = uc_string
         self.length = len(self.string)
         self.period = period
         self.loc = loc
+        self.variables = variables
+        self.variable_orders = variable_orders
+
+    #multiply variables (abc etc) and keep track of the order (power) of each variable
+    def multiply_variables(self,B):
+        if np.size(self.variables)>0 and np.size(B.variables)>0:
+            #find any shared variables
+            shared_A_indices = []
+            shared_B_indices = []
+            for n in range(0,np.size(self.variables,)):
+                for m in range(0,np.size(B.variables)):
+                    if self.variables[n] == B.variables[m]:
+                        shared_A_indices = np.append(shared_A_indices,n)
+                        shared_B_indices = np.append(shared_B_indices,m)
+            #sum there orders
+            new_orders = np.zeros(np.size(shared_A_indices))
+            for n in range(0,np.size(new_orders,axis=0)):
+                new_orders[n] = self.variable_orders[int(shared_A_indices[n])] + B.variable_orders[int(shared_B_indices[n])]
+            #form new variable array and new order array
+            variables = []
+            orders = []
+            #append shared variables and there order
+            for n in range(0,np.size(shared_A_indices,axis=0)):
+                variables = np.append(variables,self.variables[int(shared_A_indices[n])])
+                orders = np.append(orders,new_orders[n])
+            #loop through self and append any variables not shared
+            for n in range(0,np.size(self.variables,axis=0)):
+                if n not in shared_A_indices:
+                    variables = np.append(variables,self.variables[n])
+                    orders = np.append(orders,self.variable_orders[n])
+            #loop through B and append any variables not shared
+            for n in range(0,np.size(B.variables,axis=0)):
+                if n not in shared_B_indices:
+                    variables = np.append(variables,B.variables[n])
+                    orders = np.append(orders,B.variable_orders[n])
+            orders = orders.astype(int)
+            return variables,orders
+        #just return A (multiply by 1)
+        elif np.size(self.variables)>0: 
+            return self.variables,self.variable_orders
+        #just return B (multiply by 1)
+        elif np.size(B.variables)>0: 
+            return B.variables,B.variable_orders
+        else:
+            return [],[]
 
 #dictionary of op strings. Def method for commuting sum of terms linearly
 class op_string_seq:
@@ -28,9 +73,9 @@ class op_string_seq:
             self.string_seq = dict()
             self.length = 0
 
-    #new turm to sum of op strings 
-    def update(self,coef,uc_string,period,loc):
-        self.string_seq[self.length] = op_string(coef,uc_string,period,loc)
+    #new term to sum of op strings 
+    def update(self,coef,uc_string,period,loc,variables=[],variable_orders=[]):
+        self.string_seq[self.length] = op_string(coef,uc_string,period,loc,variables = variables, variable_orders = variable_orders)
         self.length += 1
 
     #scalar multiplication
@@ -47,7 +92,16 @@ class op_string_seq:
 
     def print(self):
         for n in range(0,len(self.string_seq)):
-            print(self.string_seq[n].coef,self.string_seq[n].string,self.string_seq[n].period,self.string_seq[n].loc)
+            if np.size(self.string_seq[n].variables)==0:
+                print(self.string_seq[n].coef,self.string_seq[n].string,self.string_seq[n].period,self.string_seq[n].loc)
+            else:
+                var_string = ''
+                for m in range(0,np.size(self.string_seq[n].variables,axis=0)):
+                    var_string += self.string_seq[n].variables[m]
+                    var_string += '^'
+                    var_string += str(self.string_seq[n].variable_orders[m])
+                    var_string += " "
+                print(self.string_seq[n].coef,self.string_seq[n].string,self.string_seq[n].period,self.string_seq[n].loc,var_string)
 
     #[sum_n A_n , sum_m B_m] = sum_{n,m} [A_n,B_m]
     def comPlin(self,B):
@@ -228,4 +282,10 @@ def comP(A,B):
         if np.abs(new_term_coef[keys[n]])>1e-5:
             string_seq[c] = op_string(new_term_coef[keys[n]],new_terms[keys[n]],A.period,new_loc[n]%A.period)
             c += 1
+
+    #multiply out variables and orders (all terms will have same variables)
+    new_variables,new_orders = A.multiply_variables(B)
+    for n in range(0,len(string_seq)):
+        string_seq[n].variables = new_variables
+        string_seq[n].variable_orders = new_orders
     return op_string_seq(string_seq)
