@@ -160,6 +160,21 @@ class op_string_seq:
                 string_seq[c] = self.string_seq[n]
                 c+=1
         return op_string_seq(string_seq)
+    
+    #reorder string seq so all similar strings (same string,period,loc, different variables) are printed in order when using print
+    def reorder(self):
+        reordered_indices = []
+        for n in range(0,len(self.string_seq)):
+            if n not in reordered_indices:
+                reordered_indices = np.append(reordered_indices,n)
+                for m in range(n,len(self.string_seq)):
+                    if self.string_seq[n].string == self.string_seq[m].string:
+                            if m not in reordered_indices:
+                                reordered_indices = np.append(reordered_indices,m)
+        new_string_seq = dict()
+        for n in range(0,np.size(reordered_indices,axis=0)):
+            new_string_seq[n] = self.string_seq[int(reordered_indices[n])]
+        return op_string_seq(new_string_seq)
 
     def comPlin(self,B):
         string_seq = dict()
