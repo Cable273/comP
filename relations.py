@@ -70,6 +70,23 @@ class relations:
             return simplified_string("-",1)
         elif string == "PP":
             return simplified_string("I",0)
-        # else:
-            # return simplified_string(string,1)
+        elif string == "PP":
+            return simplified_string("I",0)
+        elif string == "+P":
+            return simplified_string("+",1)
+        elif string == "P+":
+            return simplified_string("+",-1)
+        elif string == "-P":
+            return simplified_string("-",-1)
+        elif string == "P-":
+            return simplified_string("-",1)
+        elif string == "ZP":
+            return simplified_string("I",0)
+        elif string == "++":
+            return simplified_string("I",0)
+        elif string == "--":
+            return simplified_string("I",0)
+        else:
+            print(string)
+            print("Commutator not known, add to commutator relations \n")
 

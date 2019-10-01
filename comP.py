@@ -198,7 +198,10 @@ class op_string_seq:
                 for u in range(0,len(term_strings.string_seq)):
                     string_seq[c] = term_strings.string_seq[u]
                     c += 1
-        return op_string_seq(string_seq)
+        new_string_seq = op_string_seq(string_seq)
+        new_string_seq = new_string_seq.simplify()
+        new_string_seq = new_string_seq.reorder()
+        return new_string_seq
      
 
 #commute two op strings

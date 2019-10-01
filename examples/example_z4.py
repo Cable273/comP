@@ -33,7 +33,6 @@ print("\n")
 
 print("[Hz,H+]")
 error = Hz.comPlin(Hp)
-error = error.simplify()
 error.print()
 
 
