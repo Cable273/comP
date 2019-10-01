@@ -19,13 +19,15 @@ class op_string:
         self.loc = loc
         self.variables = variables
         self.variable_orders = variable_orders
+        self.update_hash()
 
+    def update_hash(self):
         #form unique hash to identify op_string type (to sum terms in an op_string_seq)
-        string_to_hash = uc_string
-        string_to_hash += str(period)
-        string_to_hash += str(loc)
-        string_to_hash += str(variables)
-        string_to_hash += str(variable_orders)
+        string_to_hash = self.string
+        string_to_hash += str(self.period)
+        string_to_hash += str(self.loc)
+        string_to_hash += str(self.variables)
+        string_to_hash += str(self.variable_orders)
         key = hash(string_to_hash)
         self.key = key
 
@@ -374,7 +376,9 @@ def comP(A,B):
 
     #multiply out variables and orders (all terms will have same variables)
     new_variables,new_orders = A.multiply_variables(B)
+    # print(A.variables,B.variables,new_variables)
     for n in range(0,len(string_seq)):
         string_seq[n].variables = new_variables
         string_seq[n].variable_orders = new_orders
+        string_seq[n].update_hash()
     return op_string_seq(string_seq)
