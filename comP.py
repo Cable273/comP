@@ -161,20 +161,33 @@ class op_string_seq:
                 c+=1
         return op_string_seq(string_seq)
     
+    #reorder first by string length, then by similar strings
     #reorder string seq so all similar strings (same string,period,loc, different variables) are printed in order when using print
     def reorder(self):
-        reordered_indices = []
+        #reorder by string length
+        string_lengths = np.zeros(len(self.string_seq))
         for n in range(0,len(self.string_seq)):
-            if n not in reordered_indices:
-                reordered_indices = np.append(reordered_indices,n)
-                for m in range(n,len(self.string_seq)):
-                    if self.string_seq[n].string == self.string_seq[m].string:
-                            if m not in reordered_indices:
-                                reordered_indices = np.append(reordered_indices,m)
+            string_lengths[n]  = self.string_seq[n].length
+        indices = np.arange(0,len(self.string_seq))
+        ordered_lengths,reordered_indices = list((t) for t in zip(*sorted(zip(string_lengths,indices))))
+
         new_string_seq = dict()
         for n in range(0,np.size(reordered_indices,axis=0)):
-            new_string_seq[n] = self.string_seq[int(reordered_indices[n])]
-        return op_string_seq(new_string_seq)
+            new_string_seq[n] = self.string_seq[reordered_indices[n]]
+            
+
+        reordered_indices = []
+        for n in range(0,len(new_string_seq)):
+            if n not in reordered_indices:
+                reordered_indices = np.append(reordered_indices,n)
+                for m in range(n,len(new_string_seq)):
+                    if new_string_seq[n].string == new_string_seq[m].string:
+                            if m not in reordered_indices:
+                                reordered_indices = np.append(reordered_indices,m)
+        final_string_seq = dict()
+        for n in range(0,np.size(reordered_indices,axis=0)):
+            final_string_seq[n] = new_string_seq[int(reordered_indices[n])]
+        return op_string_seq(final_string_seq)
 
     def comPlin(self,B):
         string_seq = dict()
