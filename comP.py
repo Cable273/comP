@@ -153,9 +153,10 @@ class op_string_seq:
             coef = 0
             for m in range(0,np.size(shared_indices,axis=0)):
                 coef = coef + self.string_seq[shared_indices[m]].coef
-            string_seq[c] = copy.deepcopy(self.string_seq[shared_indices[0]])
-            string_seq[c].coef = coef
-            c+=1
+            if np.abs(coef)>1e-5:
+                string_seq[c] = copy.deepcopy(self.string_seq[shared_indices[0]])
+                string_seq[c].coef = coef
+                c+=1
         # terms not shared
         for n in range(0,len(self.string_seq)):
             if self.string_seq[n].key not in keys:
@@ -177,7 +178,6 @@ class op_string_seq:
         for n in range(0,np.size(reordered_indices,axis=0)):
             new_string_seq[n] = self.string_seq[reordered_indices[n]]
             
-
         reordered_indices = []
         for n in range(0,len(new_string_seq)):
             if n not in reordered_indices:
