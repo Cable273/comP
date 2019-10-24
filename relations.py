@@ -51,9 +51,35 @@ class relations:
             return simplified_string("I",0)
         elif string == "--":
             return simplified_string("I",0)
+        elif string == "ZZ":
+            return simplified_string("Z",1/2)
+        elif string == "QP":
+            return simplified_string("I",0)
+        elif string == "PQ":
+            return simplified_string("I",0)
 
+        elif string == "Q+":
+            return simplified_string("+",1)
+        elif string == "+Q":
+            return simplified_string("+",-1)
+        elif string == "-Q":
+            return simplified_string("-",1)
+        elif string == "Q-":
+            return simplified_string("-",-1)
+
+        elif string == "QZ":
+            return simplified_string("Q",1/2)
+        elif string == "ZQ":
+            return simplified_string("Q",1/2)
+
+        elif string == "QQ":
+            return simplified_string("Q",1)
         else:
-            return simplified_string(string,1)
+            print(string)
+            print("Product not known, add to product relations \n")
+
+        # else:
+            # return simplified_string(string,1)
 
     def commutator(string):
         if string == "+-":
@@ -85,6 +111,32 @@ class relations:
         elif string == "++":
             return simplified_string("I",0)
         elif string == "--":
+            return simplified_string("I",0)
+
+        elif string == "Q+":
+            return simplified_string("+",1)
+        elif string == "+Q":
+            return simplified_string("+",-1)
+        elif string == "Q-":
+            return simplified_string("-",-1)
+        elif string == "-Q":
+            return simplified_string("-",1)
+        elif string == "PQ":
+            return simplified_string("I",0)
+        elif string == "QP":
+            return simplified_string("I",0)
+        elif string == "ZZ":
+            return simplified_string("I",0)
+        elif string == "PZ":
+            return simplified_string("I",0)
+        elif string == "ZP":
+            return simplified_string("I",0)
+        elif string == "ZQ":
+            return simplified_string("I",0)
+        elif string == "QZ":
+            return simplified_string("I",0)
+
+        elif string == "QQ":
             return simplified_string("I",0)
         else:
             print(string)
