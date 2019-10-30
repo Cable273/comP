@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from Search_functions import find_index_bisection
 from relations import relations
+from progressbar import ProgressBar
 
 class op_string:
     def __init__(self,coef,uc_string,period,loc,variables=[],variable_orders=[]):
@@ -131,7 +132,8 @@ class op_string_seq:
     def simplify(self):
         # find terms which share a hash (same term)
         shared_term_loc = dict()
-        for n in range(0,len(self.string_seq)):
+        pbar=ProgressBar()
+        for n in pbar(range(0,len(self.string_seq))):
             for m in range(n,len(self.string_seq)):
                 if self.string_seq[n].key == self.string_seq[m].key:
                     key = self.string_seq[n].key
@@ -194,15 +196,22 @@ class op_string_seq:
     def comPlin(self,B):
         string_seq = dict()
         c = 0
+        pbar = ProgressBar(maxval=self.length*B.length)
+        pbar.start()
+        pbar_counter = 0
         for n in range(0,len(self.string_seq)):
             for m in range(0,len(B.string_seq)):
                 term_strings = comP(self.string_seq[n],B.string_seq[m])
+                pbar_counter += 1
+                pbar.update(pbar_counter)
                 for u in range(0,len(term_strings.string_seq)):
                     string_seq[c] = term_strings.string_seq[u]
                     c += 1
         new_string_seq = op_string_seq(string_seq)
+        print("\n")
+        print(len(new_string_seq.string_seq))
         new_string_seq = new_string_seq.simplify()
-        new_string_seq = new_string_seq.reorder()
+        # new_string_seq = new_string_seq.reorder()
         return new_string_seq
      
 

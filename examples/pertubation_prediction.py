@@ -36,7 +36,7 @@ error = Hz.comPlin(Hp)
 
 from term_structures import string_term,term_same_coef
             
-# collect same terms
+# collect same terms, ie same string, period and pos
 same_terms = dict()
 for n in range(0,len(error.string_seq)):
     hash_key = error.string_seq[n].string
@@ -48,6 +48,7 @@ for n in range(0,len(error.string_seq)):
         same_terms[term_hash] = string_term()
     same_terms[term_hash].add_term(error.string_seq[n])
 
+#group differint string terms with same coef
 keys = list(same_terms.keys())
 found = []
 same_coef = dict()
@@ -68,6 +69,7 @@ for n in range(0,np.size(keys,axis=0)):
 #filter terms which have single spin flips and print perts
 print("\n")
 print("Possible pertubations (restricted to single spin flips)")
+# print("[Hz,H+]")
 for n in range(0,len(same_coef)):
     string = list(same_coef[n].terms[0].string)
     spin_flips = 0
