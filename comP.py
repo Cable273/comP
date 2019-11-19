@@ -10,6 +10,7 @@ import pandas as pd
 from Search_functions import find_index_bisection
 from relations import relations
 from progressbar import ProgressBar
+from copy import deepcopy
 
 class op_string:
     def __init__(self,coef,uc_string,period,loc,variables=[],variable_orders=[]):
@@ -22,8 +23,9 @@ class op_string:
         self.variable_orders = variable_orders
         self.update_hash()
 
+    #form unique hash to identify op_string type (to sum terms in an op_string_seq)
+    #hash(string+period_loc+variables+order)
     def update_hash(self):
-        #form unique hash to identify op_string type (to sum terms in an op_string_seq)
         string_to_hash = self.string
         string_to_hash += str(self.period)
         string_to_hash += str(self.loc)
@@ -32,7 +34,7 @@ class op_string:
         key = hash(string_to_hash)
         self.key = key
 
-    #multiply variables (abc etc) and keep track of the order (power) of each variable
+    #multiply variables and keep track of the order (power) of each variable
     def multiply_variables(self,B):
         if np.size(self.variables)>0 and np.size(B.variables)>0:
             #find any shared variables
@@ -102,6 +104,25 @@ class op_string_seq:
     def update(self,coef,uc_string,period,loc,variables=[],variable_orders=[]):
         self.string_seq[self.length] = op_string(coef,uc_string,period,loc,variables = variables, variable_orders = variable_orders)
         self.length += 1
+
+    def comPlin(self,B,relation_object):
+        string_seq = dict()
+        c = 0
+        pbar = ProgressBar(maxval=self.length*B.length)
+        pbar.start()
+        pbar_counter = 0
+        for n in range(0,len(self.string_seq)):
+            for m in range(0,len(B.string_seq)):
+                term_strings = comP(self.string_seq[n],B.string_seq[m],relation_object)
+                pbar_counter += 1
+                pbar.update(pbar_counter)
+                for u in range(0,len(term_strings.string_seq)):
+                    string_seq[c] = term_strings.string_seq[u]
+                    c += 1
+        new_string_seq = op_string_seq(string_seq)
+        # new_string_seq = new_string_seq.simplify()
+        # new_string_seq = new_string_seq.reorder()
+        return new_string_seq
 
     #scalar multiplication
     def __mul__(self,a):
@@ -193,36 +214,39 @@ class op_string_seq:
             final_string_seq[n] = new_string_seq[int(reordered_indices[n])]
         return op_string_seq(final_string_seq)
 
-    def comPlin(self,B):
-        string_seq = dict()
-        c = 0
-        pbar = ProgressBar(maxval=self.length*B.length)
-        pbar.start()
-        pbar_counter = 0
-        for n in range(0,len(self.string_seq)):
-            for m in range(0,len(B.string_seq)):
-                term_strings = comP(self.string_seq[n],B.string_seq[m])
-                pbar_counter += 1
-                pbar.update(pbar_counter)
-                for u in range(0,len(term_strings.string_seq)):
-                    string_seq[c] = term_strings.string_seq[u]
-                    c += 1
-        new_string_seq = op_string_seq(string_seq)
-        print("\n")
-        print(len(new_string_seq.string_seq))
-        new_string_seq = new_string_seq.simplify()
-        # new_string_seq = new_string_seq.reorder()
-        return new_string_seq
+class commuted_string_term:
+    def __init__(self,string,coef,loc):
+        self.string = string
+        self.coef = coef
+        self.loc = loc
+class commuted_string_seq:
+    def __init__(self):
+        self.terms = dict()
+        self.no_terms = len(self.terms)
+    def update(self,string_dict,new_coef):
+        # if np.abs(new_coef) > 1e-5: #!=0
+        keys = list(string_dict.keys())
+        appended_string = string_dict[keys[0]]
+        for m in range(1,np.size(keys)):
+            if len(string_dict[keys[m]])>1:
+                temp = "("
+                temp += string_dict[keys[m]]
+                temp += ")"
+                appended_string += temp
+            else:
+                appended_string += string_dict[keys[m]]
+        loc = np.min(list(string_dict.keys()))
+        self.terms[self.no_terms] = commuted_string_term(appended_string,new_coef,loc)
+        self.no_terms += 1
      
-
 #commute two op strings
-def comP(A,B):
+def comP(A,B,relation_object):
     #array with unit cell of A/B indices (eg 2n+1,2n+2,2n+3->1,2,3)
     A_loc = np.arange(A.loc,A.loc+A.length)
     B_loc = np.arange(B.loc,B.loc+B.length)
 
-    #RHS indices = B.period*n+B.loc
     #find n_vals=[...] such that end of B string touch A string
+    #RHS indices = B.period*n+B.loc
     max_found = 0
     counter=0
     while max_found == 0:
@@ -230,6 +254,7 @@ def comP(A,B):
         n_max = (A_loc[np.size(A_loc)-1]-B.loc-counter)/B.period
         if n_max.is_integer() == True:
             max_found = 1
+            break
         else:
             counter += 1
     min_found = 0
@@ -239,6 +264,7 @@ def comP(A,B):
         n_min = (A.loc-B_loc[np.size(B_loc)-1]+counter)/B.period
         if n_min.is_integer() == True:
             min_found = 1
+            break
         else:
             counter += 1
     n_vals = np.arange(n_min,n_max+1)
@@ -276,6 +302,7 @@ def comP(A,B):
         new_coef[n] = A.coef * B.coef
 
     #replace known products from relation class
+    simplified_commutes = commuted_string_seq()
     for n in range(0,np.size(rhs_loc,axis=0)):
         #identify all pairs of producted operators
         keys = list(rhs_commutes[n])
@@ -283,10 +310,16 @@ def comP(A,B):
         for m in range(0,np.size(keys,axis=0)):
             if len(rhs_commutes[n][keys[m]]) > 1:
                 paired_keys = np.append(paired_keys,keys[m])
+
         #replace any PP pairs with P
         for m in range(0,np.size(paired_keys,axis=0)):
             if rhs_commutes[n][paired_keys[m]] == "PP":
                 rhs_commutes[n][paired_keys[m]] = "P"
+        #replace any QQ pairs with Q
+        for m in range(0,np.size(paired_keys,axis=0)):
+            if rhs_commutes[n][paired_keys[m]] == "QQ":
+                rhs_commutes[n][paired_keys[m]] = "Q"
+
         #identify remaining pairs
         paired_keys = []
         for m in range(0,np.size(keys,axis=0)):
@@ -295,97 +328,86 @@ def comP(A,B):
             
         #if no. paired keys == 1 can do regular commutator
         if np.size(paired_keys) == 1:
-            simplified_commutator = relations.commutator(rhs_commutes[n][paired_keys[0]])
-            new_coef[n] = new_coef[n] * simplified_commutator.coef
-            rhs_commutes[n][paired_keys[0]] = simplified_commutator.string
-        else:
-            #AB term
-            AB_coef = np.copy(new_coef[n])
-            simplified_products_AB = dict()
-            for m in range(0,np.size(paired_keys,axis=0)):
-                simplified_products_AB[m] = relations.product(rhs_commutes[n][paired_keys[m]])
-            for m in range(0,len(simplified_products_AB)):
-                AB_coef = AB_coef * simplified_products_AB[m].coef
+            #desired syntax
+            # simplified_commutators= relations.commutator(rhs_commutes[n][paired_keys[0]])
+            simplified_commutators= relation_object.commutator(rhs_commutes[n][paired_keys[0]])
+            for u in range(0,simplified_commutators.length):
+                temp_string_dict = deepcopy(rhs_commutes[n])
+                temp_string_dict[paired_keys[0]] = simplified_commutators.entry[u].string
 
-            #BA term (flip string)
-            BA_coef = np.copy(new_coef[n])
+                temp_coef = new_coef[n] * simplified_commutators.entry[u].coef
+                simplified_commutes.update(temp_string_dict,temp_coef)
+        else:
+            AB_coef_orig = np.copy(new_coef[n])
+            BA_coef_orig = np.copy(new_coef[n])
+
+            simplified_products_AB = dict()
             simplified_products_BA = dict()
             for m in range(0,np.size(paired_keys,axis=0)):
-                simplified_products_BA[m] = relations.product(rhs_commutes[n][paired_keys[m]][::-1])
+                simplified_products_AB[m] = relation_object.product(rhs_commutes[n][paired_keys[m]])
+                simplified_products_BA[m] = relation_object.product(rhs_commutes[n][paired_keys[m]][::-1])
+
+            index_array_AB = []
+            for m in range(0,len(simplified_products_AB)):
+                temp = list(simplified_products_AB[m].entry.keys())
+                index_array_AB.append(temp)
+            from itertools import product
+            indices_AB = np.array(list(product(*index_array_AB)))
+
+            index_array_BA = []
             for m in range(0,len(simplified_products_BA)):
-                BA_coef = BA_coef * simplified_products_BA[m].coef
+                temp = list(simplified_products_BA[m].entry.keys())
+                index_array_BA.append(temp)
+            from itertools import product
+            indices_BA = np.array(list(product(*index_array_BA)))
 
-            if AB_coef != 0 and BA_coef != 0:
-                #change first term to be AB, append BA term with negative coefficient
-                for m in range(0,len(simplified_products_AB)):
-                    rhs_commutes[n][paired_keys[m]] = simplified_products_AB[m].string
-                new_coef[n] = AB_coef
-                new_index = len(rhs_commutes)
-                rhs_commutes[new_index] = copy.copy(rhs_commutes[n])
-                for m in range(0,len(simplified_products_BA)):
-                    rhs_commutes[new_index][paired_keys[m]] = simplified_products_BA[m].string
-                new_coef = np.append(new_coef,-BA_coef)
+            if np.size(indices_AB)>0:
+                for u in range(0,np.size(indices_AB,axis=0)):
+                    temp_string_dict = deepcopy(rhs_commutes[n])
+                    paired_key_index = 0
+                    temp_coef = AB_coef_orig
+                    for v in range(0,np.size(indices_AB[u],axis=0)):
+                        temp_string_dict[paired_keys[paired_key_index]] = simplified_products_AB[v].entry[indices_AB[u][v]].string
+                        temp_coef = temp_coef * simplified_products_AB[v].entry[indices_AB[u][v]].coef
+                        paired_key_index += 1
+                    simplified_commutes.update(temp_string_dict,temp_coef)
 
-            elif AB_coef != 0:
-                for m in range(0,len(simplified_products_AB)):
-                    rhs_commutes[n][paired_keys[m]] = simplified_products_AB[m].string
-                new_coef[n] = AB_coef
-            elif BA_coef != 0:
-                for m in range(0,len(simplified_products_BA)):
-                    rhs_commutes[n][paired_keys[m]] = simplified_products_BA[m].string
-                new_coef[n] = -BA_coef
-            else:
-                new_coef[n] = 0
+            if np.size(indices_BA)>0:
+                for u in range(0,np.size(indices_BA,axis=0)):
+                    temp_string_dict = deepcopy(rhs_commutes[n])
+                    paired_key_index = 0
+                    temp_coef = BA_coef_orig
+                    for v in range(0,np.size(indices_BA[u],axis=0)):
+                        temp_string_dict[paired_keys[paired_key_index]] = simplified_products_BA[v].entry[indices_BA[u][v]].string
+                        temp_coef = temp_coef * simplified_products_BA[v].entry[indices_BA[u][v]].coef
+                        paired_key_index += 1
+                    simplified_commutes.update(temp_string_dict,-temp_coef)
 
-    #append simplified site ops to form strings, only considering those with coef>0
     rhs_strings = dict()
     new_loc = []
     new_coef_trimmed = []
     c=0
-    for n in range(0,len(rhs_commutes)):
-        if np.abs(new_coef[n]) > 1e-5: #!=0
-            keys = list(rhs_commutes[n].keys())
-            rhs_strings[c] = rhs_commutes[n][keys[0]]
-            for m in range(1,np.size(keys)):
-                if len(rhs_commutes[n][keys[m]])>1:
-                    temp = "("
-                    temp += rhs_commutes[c][keys[m]]
-                    temp += ")"
-                    rhs_strings[c] += temp
-                else:
-                    rhs_strings[c] += rhs_commutes[n][keys[m]]
-            loc = np.min(list(rhs_commutes[n].keys()))
-            new_loc = np.append(new_loc,loc)
-            new_coef_trimmed = np.append(new_coef_trimmed,new_coef[n])
-            c += 1
-    #simplify final terms - cancel any same terms/replace commutators (eg P(+-)P - P(-+)P = 2*PZP)
-    #dictionary storing string + coef using hash of string as key (so coef sum can be updated, unique key)
-    new_terms = dict()
-    new_term_coef = dict()
-    keys = list(rhs_strings.keys())
-    #init
-    for n in range(0,np.size(keys,axis=0)):
-        new_term_coef[hash(rhs_strings[keys[n]])]  = 0
-        new_terms[hash(rhs_strings[keys[n]])] = rhs_strings[keys[n]]
-    #update coef
-    for n in range(0,np.size(keys,axis=0)):
-        new_term_coef[hash(rhs_strings[keys[n]])]  += new_coef_trimmed[n]
+    for n in range(0,simplified_commutes.no_terms):
+        if np.abs(simplified_commutes.terms[n].coef)>1e-5:
+            rhs_strings[c] = simplified_commutes.terms[n].string
+            new_loc = np.append(new_loc,simplified_commutes.terms[n].loc)
+            new_coef_trimmed = np.append(new_coef_trimmed,simplified_commutes.terms[n].coef)
+            c+=1
 
-    #form new op_string_seq
-    keys = list(new_terms.keys())
+    #keep non zero terms
+    keys = list(rhs_strings.keys())
     non_zero_strings = dict()
     non_zero_coef = dict()
     non_zero_loc = []
     c=0
     string_seq = dict()
     for n in range(0,np.size(keys,axis=0)):
-        if np.abs(new_term_coef[keys[n]])>1e-5:
-            string_seq[c] = op_string(new_term_coef[keys[n]],new_terms[keys[n]],A.period,new_loc[n]%A.period)
+        if np.abs(new_coef_trimmed[keys[n]])>1e-5:
+            string_seq[c] = op_string(new_coef_trimmed[keys[n]],rhs_strings[keys[n]],A.period,new_loc[n]%A.period)
             c += 1
 
     #multiply out variables and orders (all terms will have same variables)
     new_variables,new_orders = A.multiply_variables(B)
-    # print(A.variables,B.variables,new_variables)
     for n in range(0,len(string_seq)):
         string_seq[n].variables = new_variables
         string_seq[n].variable_orders = new_orders
