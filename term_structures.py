@@ -76,10 +76,10 @@ class term_same_coef:
                 #see if this coef is in initial term coef
                 term_found = 0
                 for m in range(0,len(self.init_term.terms)):
-                    if variables == self.init_term.terms[m].variables and variable_orders == self.init_term.terms[m].variable_orders and coef == self.init_term.terms[m].coef:
-                        term_found = 1
-                        break
-
+                    if len(variables) == len(self.init_term.terms[m].variables):
+                        if np.array_equal(variables,self.init_term.terms[m].variables) and np.array_equal(variable_orders,self.init_term.terms[m].variable_orders) and np.array_equal(coef,self.init_term.terms[m].coef):
+                            term_found = 1
+                            break
                 if term_found == 0:
                     all_terms_identical = 0
                     break
