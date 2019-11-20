@@ -120,8 +120,8 @@ class op_string_seq:
                     string_seq[c] = term_strings.string_seq[u]
                     c += 1
         new_string_seq = op_string_seq(string_seq)
-        # new_string_seq = new_string_seq.simplify()
-        # new_string_seq = new_string_seq.reorder()
+        new_string_seq = new_string_seq.simplify()
+        new_string_seq = new_string_seq.reorder()
         return new_string_seq
 
     #scalar multiplication
