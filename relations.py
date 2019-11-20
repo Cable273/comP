@@ -136,12 +136,12 @@ class su3_8d_relations(relations):
 
         self.ops['P'] = np.array([[1,0,0],[0,0,0],[0,0,0]])
         self.ops['Q'] = np.array([[0,0,0],[0,1,0],[0,0,0]])
-        self.ops['T'] = np.array([[0,0,0],[0,0,0],[0,1,0]])
+        self.ops['T'] = np.array([[0,0,0],[0,0,0],[0,0,1]])
 
         #projector ops - store these terms sep to check by hand if [a,b], ab == projector 
         #cant include in linear superposition of group generators as not orthonormal wrt frob norm
         self.projectors = dict()
         self.projectors['P'] = np.array([[1,0,0],[0,0,0],[0,0,0]])
         self.projectors['Q'] = np.array([[0,0,0],[0,1,0],[0,0,0]])
-        self.projectors['T'] = np.array([[0,0,0],[0,0,0],[0,1,0]])
+        self.projectors['T'] = np.array([[0,0,0],[0,0,0],[0,0,1]])
         self.proj_keys = list(self.projectors.keys())
