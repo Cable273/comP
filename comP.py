@@ -136,6 +136,21 @@ class op_string_seq:
             new_string_seq[n].coef = new_string_seq[n].coef*a
         return op_string_seq(new_string_seq)
 
+    #adding two string seq
+    def __add__(self,B):
+        new_string_seq = dict()
+        c=0
+        for n in range(0,self.length):
+            new_string_seq[c] = self.string_seq[n]
+            c+=1
+        for n in range(0,B.length):
+            new_string_seq[c] = B.string_seq[n]
+            c+=1
+        new_string_seq = self.simplify()
+        new_string_seq = self.reorder()
+        return new_string_seq
+            
+
     def print(self):
         for n in range(0,len(self.string_seq)):
             if np.size(self.string_seq[n].variables)==0:
@@ -413,3 +428,62 @@ def comP(A,B,relation_object):
         string_seq[n].variable_orders = new_orders
         string_seq[n].update_hash()
     return op_string_seq(string_seq)
+
+def collect_terms(error):
+    # print("Collecting same terms different coef")
+    from term_structures import string_term,term_same_coef
+    # # collect same terms, ie same string, period and pos
+    same_terms = dict()
+    from progressbar import ProgressBar
+    pbar = ProgressBar()
+    for n in pbar(range(0,len(error.string_seq))):
+        hash_key = error.string_seq[n].string
+        hash_key += str(error.string_seq[n].period)
+        hash_key += str(error.string_seq[n].loc)
+        term_hash = hash(hash_key)
+
+        if term_hash not in list(same_terms.keys()):
+            same_terms[term_hash] = string_term()
+        same_terms[term_hash].add_term(error.string_seq[n])
+
+    # pickle.dump(same_terms,open("z2,2nd_order_lie_algebra,same_terms.obj","wb"))
+    # same_terms = pickle.load(open("z2,2nd_order_lie_algebra,same_terms.obj","rb"))
+
+    # print("Grouping different terms with same coef")
+    #group differint string terms with same coef
+    keys = list(same_terms.keys())
+    found = []
+    same_coef = dict()
+    c=0
+    pbar = ProgressBar()
+    for n in pbar(range(0,np.size(keys,axis=0))):
+        if n not in found:
+            same_coef[c] = term_same_coef(same_terms[keys[n]])
+            found = np.append(found,n)
+            for m in range(n,np.size(keys,axis=0)):
+                if m not in found:
+                    init_length = same_coef[c].length
+                    same_coef[c].add_term(same_terms[keys[m]])
+                    new_length = same_coef[c].length
+                    if init_length != new_length:
+                        found = np.append(found,m)
+            c += 1
+
+    import pickle
+    # pickle.dump(same_coef,open("z2,2nd_order_lie_algebra,same_coef.obj","wb"))
+    # same_coef = pickle.load(open("z2,2nd_order_lie_algebra,same_coef.obj","rb"))
+
+    #filter terms which have single spin flips and print perts
+    # print("\n")
+    # print("Possible pertubations (restricted to single spin flips)")
+    for n in range(0,len(same_coef)):
+        string = list(same_coef[n].terms[0].string)
+        spin_flips = 0
+        for u in range(0,np.size(string,axis=0)):
+            if string[u] == "+" or string[u] == "-":
+                spin_flips += 1
+        # if spin_flips <=2:
+        print(same_coef[n].coef)
+        for m in range(0,same_coef[n].length):
+            print(same_coef[n].terms[m].string,same_coef[n].terms[m].period,same_coef[n].terms[m].loc)
+        print("\n")
